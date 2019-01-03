@@ -1,0 +1,5 @@
+#import <Foundation/Foundation.h>
+@interface PodsDummy_Pods_AppleTransparencyReportPods_AppleTransparencyReport : NSObject
+@end
+@implementation PodsDummy_Pods_AppleTransparencyReportPods_AppleTransparencyReport
+@end
