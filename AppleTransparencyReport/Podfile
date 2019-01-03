@@ -1,0 +1,8 @@
+install! 'cocoapods', :share_schemes_for_development_pods => true
+use_frameworks!
+abstract_target 'AppleTransparencyReportPods' do
+	pod 'FastMath', path: '../../Frameworks/FastMath'
+    pod 'Pippin/Extensions', path: '../../Frameworks/Pippin'
+    
+    target 'AppleTransparencyReport'
+end
