@@ -1,2 +1,3 @@
-# swift-unicode-playground
-A collection of interesting tricks made possible by Unicode support in Swift identifiers.
+# blog-projects
+
+The source code for any work done for a blog post at [https://tworingsoft.com/blog](https://tworingsoft.com/blog). Each project will have its own directory and README.
