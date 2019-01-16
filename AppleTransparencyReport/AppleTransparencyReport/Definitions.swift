@@ -18,7 +18,7 @@ typealias DataSet = [String: Double]
 /// A mapping of unique keys to `DataSet`s, to collect data sets by time period, location, etc.
 typealias DataSetMap = [String: DataSet]
 
-typealias AllData = (requests: DataSet, ratios: DataSet, honoredPercentages: DataSet)
+typealias AllData = (requests: DataSet, items: DataSet, ratios: DataSet, honoredRequests: DataSet, honoredPercentages: DataSet)
 
 /// An ordered list of tuples with the `String` descriptions of the keys and values of a `DataSet`.
 typealias CSVOutput = [(String, String)]
@@ -51,16 +51,30 @@ enum Column: Int {
     }
 }
 
-enum CSVOutputType: String, CaseIterable {
-    case requestCounts
-    case itemsPerRequest
-    case percentRequestsHonored
-}
-
-enum CSVOutputFile: String {
-    case requests = "Requests"
-    case itemRatios = "Items Per Request"
-    case honoredRequestPercentages = "Honored Request Percentage"
+enum CSVOutputFile: String, Hashable {
+    case topRequests = "Requests (Top 10 Countries)"
+    
+    case topItemCounts = "Requested Items (Top 10 Countries)"
+    case topItemCountsByRequests = "Requested Items (Top 10 Countries by Requests)"
+    case topItemRatios = "Item/Request Ratios (Top 10 Countries)"
+    case topRatiosByRequests = "Items Per Request (Top 10 Countries by Requests)"
+    
+    case topHonoredRequestCounts = "Honored Requests (Top 10 Countries)"
+    case topHonoredRequestCountsByRequests = "Honored Requests (Top 10 Countries by Requests)"
+    case topHonoredRequestPercentages = "Honored Request Percentage (Top 10 Countries)"
+    case topHonoredRequestPercentagesByRequests = "Honored Request Percentage (Top 10 Countries by Requests)"
+    
+    case requestDistribution = "Request Distribution"
+    case itemsDistribution = "Requested Items Distribution"
+    case ratioDistribution = "Item/Request Ratio Distribution"
+    case honoredRequestDistribution = "Honored Request Distribution"
+    case honoredPercentageDistribution = "Honored Request Percentage Distribution"
+    
+    case requestSeries = "Requests Over Time"
+    case itemSeries = "Requested Items Over Time"
+    case ratioSeries = "Item/Request Ratios Over Time"
+    case honoredRequestSeries = "Honored Requests Over Time"
+    case honoredPercentageSeries = "Honored Request Percentages Over Time"
 }
 
 extension Bundle {
@@ -91,22 +105,26 @@ extension String {
 
 /// Given the contents of a given CSV file, extract the data sets of interest, each as a map of country names to the target value.
 func extractDataSets(rows: CSV, csv: CSVFile) -> AllData {
-    var requestsReceived = DataSet()
+    var requestCounts = DataSet()
+    var requestItemCounts = DataSet()
     var requestItemRatios = DataSet()
+    var honoredRequestCounts = DataSet()
     var honoredRequestRatios = DataSet()
     
     rows.forEach({ (rowColumns) in
         let country = rowColumns[Column.country.rawValue]
         let requestAmount = rowColumns[Column.requestCount.rawValue].doubleValue
         let itemsRequested = rowColumns[Column.totalItemCount.rawValue].doubleValue
-        requestsReceived[country] = requestAmount
+        requestCounts[country] = requestAmount
+        requestItemCounts[country] = itemsRequested
         let itemRatio = itemsRequested / requestAmount
         requestItemRatios[country] = itemRatio
         let honoredRatio = honoredRequestRatio(csv: csv, rowColumns: rowColumns, requestAmount: requestAmount)
+        honoredRequestCounts[country] = honoredRatio * requestAmount
         honoredRequestRatios[country] = honoredRatio
     })
     
-    return (requestsReceived, requestItemRatios, honoredRequestRatios)
+    return (requestCounts, requestItemCounts, requestItemRatios, honoredRequestCounts, honoredRequestRatios)
 }
 
 /// - Parameter requestAmount: since account preservation reports only provide the amount of requests honored while the others provide the percentage, we must calculate its percentage, which requires knowing how many requests were submitted.
@@ -133,8 +151,8 @@ func topSortedCSV(topSortedKeys: [String], dataSet: DataSet) -> CSVOutput {
 }
 
 /// Write the chart data to a CSV file.
-func write(chartData: CSVOutput, directory: URL, name: String, headerString: String) {
-    let csvURL = directory.appendingPathComponent(name)
+func write(chartData: CSVOutput, directory: URL, csvFile: CSVOutputFile, headerString: String) {
+    let csvURL = directory.appendingPathComponent(csvFile.rawValue).appendingPathExtension("csv")
     let csvString = headerString + "\n" + chartData.map({ (keyValuePair) -> String in
         return "\(keyValuePair.0), \(keyValuePair.1)"
     }).joined(separator: "\n")
@@ -142,7 +160,7 @@ func write(chartData: CSVOutput, directory: URL, name: String, headerString: Str
 }
 
 /// Write a map of time series data into a new directory of files for each time series, where the key to which it's mapped is the filename.
-func write(timeSeries: DataSetMap, csv: CSVFile, directory: URL, name: String, sortedCountries: [String]) {
+func write(timeSeries: DataSetMap, csv: CSVFile, directory: URL, csvFile: CSVOutputFile, sortedCountries: [String]) {
     // build a csv that maps time period to a list of values, one for each country sorted by name, default to 0 to fill in empty data for countries that aren't found in a particular csv or time period
     let chartData = timeSeries.reduce(into: [(String, String)](), { (result, timePeriodRequests) in
         result.append((timePeriodRequests.key, sortedCountries.map({ (country) -> String in
@@ -156,7 +174,7 @@ func write(timeSeries: DataSetMap, csv: CSVFile, directory: URL, name: String, s
         return a.0.compare(b.0) == .orderedAscending
     }
     let headers = "Time Period,\(sortedCountries.joined(separator: ","))"
-    write(chartData: chartData, directory: directory, name: name, headerString: headers)
+    write(chartData: chartData, directory: directory, csvFile: csvFile, headerString: headers)
 }
 
 /// For a `Dictionary` with values of `Dictionary` type, given a key to access a `Dictionary` and a key and value to insert into the inner `Dictionary`, perform the check to see if the inner dictionary exists yet; if so, sets the value to the key inside it, otherwise creates a new `Dictionary` instance with the key and value.
