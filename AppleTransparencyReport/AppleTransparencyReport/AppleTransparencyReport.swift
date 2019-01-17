@@ -52,7 +52,7 @@ class AppleTransparencyReport: XCTestCase {
                     .appendingPathComponent(csv.rawValue.replacingOccurrences(of: ".csv", with: ""))
                 try! fileManager.createDirectory(at: timePeriodDirectory, withIntermediateDirectories: true, attributes: nil)
                 
-                // sort countries and take top N by various values
+                // sort top N countries by various values
                 let topCountriesToExtract = 10
                 let topCountriesByRequestCount = data.requests.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
                 let topCountriesByItemsRequested = data.items.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
@@ -120,7 +120,7 @@ class AppleTransparencyReport: XCTestCase {
                 })
             })
             
-            // write timeseries reports
+            // timeseries reports
             let timeSeriesName = reportNameAndContents.key.rawValue.replacingOccurrences(of: ".csv", with: "")
             let directory = baseURL.appendingPathComponent("Time Series").appendingPathComponent(timeSeriesName)
             try! fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
