@@ -1,6 +1,6 @@
 {
   "name": "FastMath",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "summary": "A math library written in Swift.",
   "description": "FastMath is a framework for performing numerical computation in Swift.",
   "homepage": "https://github.com/tworingsoft/fastmath",
@@ -13,10 +13,15 @@
   },
   "source": {
     "git": "https://github.com/tworingsoft/fastmath.git",
-    "tag": "2.1.0"
+    "tag": "2.2.0"
   },
   "source_files": "Sources/**/*.{c,h,swift}",
   "swift_version": "4",
+  "dependencies": {
+    "Pippin/Extensions": [
+
+    ]
+  },
   "testspecs": [
     {
       "name": "Tests",
