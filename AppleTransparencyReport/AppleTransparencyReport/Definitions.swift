@@ -128,7 +128,7 @@ func extractDataSets(rows: CSV, csv: CSVFile) -> AllData {
         let itemRatio = itemsRequested / requestAmount
         requestItemRatios[country] = itemRatio
         let honoredRatio = honoredRequestRatio(csv: csv, rowColumns: rowColumns, requestAmount: requestAmount)
-        honoredRequestCounts[country] = honoredRatio * requestAmount
+        honoredRequestCounts[country] = round(honoredRatio * requestAmount / 100)
         honoredRequestRatios[country] = honoredRatio
     })
     
