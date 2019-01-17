@@ -110,7 +110,13 @@ class AppleTransparencyReport: XCTestCase {
                     CSVOutputFile.honoredRequestDistribution: data.honoredRequests.values.normalDistribution(),
                     CSVOutputFile.honoredPercentageDistribution: data.honoredPercentages.values.normalDistribution(),
                 ].forEach({ (distribution) in
-                    write(chartData: distribution.value.sortedByKey().map {($0.0, "\($0.1)")}, directory: timePeriodDirectory, csvFile: distribution.key, headerString: "Standard Deviation,# of Countries")
+                    let data = distribution.value.reduce(into: [Int: Int](), { (result, next) in
+                        result[next.key.integerValue] = next.value
+                    }).sortedByKey().map { keyValuePair -> (String, String) in
+                        let (bucket, count) = keyValuePair
+                        return (String(describing: bucket), "\(count)")
+                    }
+                    write(chartData: data, directory: timePeriodDirectory, csvFile: distribution.key, headerString: "Standard Deviation,# of Countries")
                 })
             })
             
