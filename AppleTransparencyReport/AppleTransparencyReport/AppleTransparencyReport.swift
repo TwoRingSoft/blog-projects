@@ -11,6 +11,7 @@ import XCTest
 
 class AppleTransparencyReport: XCTestCase {
     
+    private let countriesToExtract = 10
     private let fileManager = FileManager.default
     private let baseURL = URL(fileURLWithPath: "/Users/andrew/Documents/AppleTransparencyReport")
     
@@ -31,6 +32,7 @@ class AppleTransparencyReport: XCTestCase {
             var honoredRequestCountsOverTime = DataSetMap()
             var honoredPercentagesOverTime = DataSetMap()
             var latestTopCountryLists = [ReportDataType: [String]]()
+            var latestBottomCountryLists = [ReportDataType: [String]]()
             let csvContentsByTimePeriod = contents.csvByTimePeriod
             let lastTimePeriod = csvContentsByTimePeriod.keys.sorted().last!
             csvContentsByTimePeriod.forEach({ (keyValuePair) in
@@ -52,37 +54,42 @@ class AppleTransparencyReport: XCTestCase {
                     .appendingPathComponent(csv.fileName.replacingOccurrences(of: ".csv", with: ""))
                 try! fileManager.createDirectory(at: timePeriodDirectory, withIntermediateDirectories: true, attributes: nil)
                 
-                // sort top N countries by various values
-                let topCountriesToExtract = 10
-                let topCountriesByRequestCount = data.requests.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
-                let topCountriesByItemsRequested = data.items.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
-                let topCountriesByItemsPerRequest = data.ratios.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
-                let topCountriesByHonoredRequests = data.honoredRequests.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
-                let topCountriesByHonoredRequestPercentage = data.honoredPercentages.keysSortedByValue(maxCount: topCountriesToExtract, ascending: false)
-                
-                let sortingLists: [ReportDataType: [String]] = [
-                    .requestCount: topCountriesByRequestCount,
-                    .itemCount: topCountriesByItemsRequested,
-                    .itemRatio: topCountriesByItemsPerRequest,
-                    .honoredRequestCount: topCountriesByHonoredRequests,
-                    .honoredRequestPercentage: topCountriesByHonoredRequestPercentage,
-                ]
-                if timePeriod == lastTimePeriod {
-                    latestTopCountryLists = sortingLists
-                }
-                
-                let dataSets: [ReportDataType: DataSet] = [
-                    .requestCount: data.requests,
-                    .itemCount: data.items,
-                    .itemRatio: data.ratios,
-                    .honoredRequestCount: data.honoredRequests,
-                    .honoredRequestPercentage: data.honoredPercentages,
-                ]
-                dataSets.forEach { (nextDataSet) in
-                    sortingLists.forEach({ (nextTopCountryList) in
-                        let csvOutput = topSortedCSV(topSortedKeys: nextTopCountryList.value, dataSet: nextDataSet.value)
-                        write(chartData: csvOutput, directory: timePeriodDirectory, name: nextDataSet.key.rawValue, headerString: "Country,\(csv.name)", sortedBy: nextTopCountryList.key)
-                    })
+                // process top/bottom N countries by various values
+                [true, false].forEach { ascending in
+                    let countriesByRequestCount = data.requests.keysSortedByValue(maxCount: countriesToExtract, ascending: ascending)
+                    let countriesByItemsRequested = data.items.keysSortedByValue(maxCount: countriesToExtract, ascending: ascending)
+                    let countriesByItemsPerRequest = data.ratios.keysSortedByValue(maxCount: countriesToExtract, ascending: ascending)
+                    let countriesByHonoredRequests = data.honoredRequests.keysSortedByValue(maxCount: countriesToExtract, ascending: ascending)
+                    let countriesByHonoredRequestPercentage = data.honoredPercentages.keysSortedByValue(maxCount: countriesToExtract, ascending: ascending)
+                    
+                    let sortingLists: [ReportDataType: [String]] = [
+                        .requestCount: countriesByRequestCount,
+                        .itemCount: countriesByItemsRequested,
+                        .itemRatio: countriesByItemsPerRequest,
+                        .honoredRequestCount: countriesByHonoredRequests,
+                        .honoredRequestPercentage: countriesByHonoredRequestPercentage,
+                    ]
+                    if timePeriod == lastTimePeriod {
+                        if ascending {
+                            latestBottomCountryLists = sortingLists
+                        } else {
+                            latestTopCountryLists = sortingLists
+                        }
+                    }
+                    
+                    let dataSets: [ReportDataType: DataSet] = [
+                        .requestCount: data.requests,
+                        .itemCount: data.items,
+                        .itemRatio: data.ratios,
+                        .honoredRequestCount: data.honoredRequests,
+                        .honoredRequestPercentage: data.honoredPercentages,
+                    ]
+                    dataSets.forEach { (nextDataSet) in
+                        sortingLists.forEach({ (nextTopCountryList) in
+                            let csvOutput = topSortedCSV(topSortedKeys: nextTopCountryList.value, dataSet: nextDataSet.value)
+                            write(chartData: csvOutput, directory: timePeriodDirectory, name: (ascending ? "Bottom" : "Top") + " \(countriesToExtract) " + nextDataSet.key.rawValue, headerString: "Country,\(csv.name)", sortedBy: nextTopCountryList.key)
+                        })
+                    }
                 }
                 
                 // distributions
@@ -109,13 +116,19 @@ class AppleTransparencyReport: XCTestCase {
             let timeSeriesName = reportNameAndContents.key.fileName.replacingOccurrences(of: ".csv", with: "")
             let directory = baseURL.appendingPathComponent("Time Series").appendingPathComponent(timeSeriesName)
             try! fileManager.createDirectory(at: directory, withIntermediateDirectories: true, attributes: nil)
-            latestTopCountryLists.forEach { keyValuePair in
-                let (ReportDataType, countries) = keyValuePair
-                write(timeSeries: requestCountsOverTime, csv: csv, directory: directory, name: "Requests Over Time", countries: countries, sortedBy: ReportDataType)
-                write(timeSeries: itemCountsOverTime, csv: csv, directory: directory, name: "Requested Items Over Time", countries: countries, sortedBy: ReportDataType)
-                write(timeSeries: itemRatiosOverTime, csv: csv, directory: directory, name: "Items Per Request Over Time", countries: countries, sortedBy: ReportDataType)
-                write(timeSeries: honoredRequestCountsOverTime, csv: csv, directory: directory, name: "Honored Requests Over Time", countries: countries, sortedBy: ReportDataType)
-                write(timeSeries: honoredPercentagesOverTime, csv: csv, directory: directory, name: "Honored Request Percentages Over Time", countries: countries, sortedBy: ReportDataType)
+            [
+                "Top": latestTopCountryLists,
+                "Bottom": latestBottomCountryLists,
+            ].forEach { rankedTimeSeries in
+                rankedTimeSeries.value.forEach { keyValuePair in
+                    let (ReportDataType, countries) = keyValuePair
+                    let rankString =  "(\(rankedTimeSeries.key) \(countriesToExtract))"
+                    write(timeSeries: requestCountsOverTime, csv: csv, directory: directory, name: "Requests Over Time \(rankString))", countries: countries, sortedBy: ReportDataType)
+                    write(timeSeries: itemCountsOverTime, csv: csv, directory: directory, name: "Requested Items Over Time \(rankString)", countries: countries, sortedBy: ReportDataType)
+                    write(timeSeries: itemRatiosOverTime, csv: csv, directory: directory, name: "Items Per Request Over Time \(rankString)", countries: countries, sortedBy: ReportDataType)
+                    write(timeSeries: honoredRequestCountsOverTime, csv: csv, directory: directory, name: "Honored Requests Over Time \(rankString)", countries: countries, sortedBy: ReportDataType)
+                    write(timeSeries: honoredPercentagesOverTime, csv: csv, directory: directory, name: "Honored Request Percentages Over Time \(rankString)", countries: countries, sortedBy: ReportDataType)
+                }
             }
         }
     }
