@@ -26,11 +26,29 @@ typealias CSVOutput = [(String, String)]
 let size = 300
 let fileManager = FileManager.default
 
-enum CSVFile: String, CaseIterable {
-    case devices = "device_requests.csv"
-    case financialIDs = "financial_identifier_requests.csv"
-    case accountPreservation = "account_preservation_requests.csv"
-    case accountRequests = "account_requests.csv"
+enum CSVFile: CaseIterable {
+    case devices
+    case financialIDs
+    case accountPreservation
+    case accountRequests
+    
+    var name: String {
+        switch self {
+        case .devices: return "Device Requests"
+        case .financialIDs: return "Financial ID Requests"
+        case .accountPreservation: return "Account Preservation Requests"
+        case .accountRequests: return "Account Requests"
+        }
+    }
+    
+    var fileName: String {
+        switch self {
+        case .devices: return "device_requests.csv"
+        case .financialIDs: return "financial_identifier_requests.csv"
+        case .accountPreservation: return "account_preservation_requests.csv"
+        case .accountRequests: return "account_requests.csv"
+        }
+    }
 }
 
 enum Column: Int {
@@ -51,48 +69,22 @@ enum Column: Int {
     }
 }
 
-enum CSVOutputFile: String, Hashable {
-    case topRequests = "Requests (Top 10 Countries)"
-    
-    case topItemCounts = "Requested Items (Top 10 Countries)"
-    case topItemCountsByRequests = "Requested Items (Top 10 Countries by Requests)"
-    case topItemRatios = "Items Per Request (Top 10 Countries)"
-    case topRatiosByRequests = "Items Per Request (Top 10 Countries by Requests)"
-    
-    case topHonoredRequestCounts = "Honored Requests (Top 10 Countries)"
-    case topHonoredRequestCountsByRequests = "Honored Requests (Top 10 Countries by Requests)"
-    case topHonoredRequestPercentages = "Honored Request Percentage (Top 10 Countries)"
-    case topHonoredRequestPercentagesByRequests = "Honored Request Percentage (Top 10 Countries by Requests)"
-    
-    case requestDistribution = "Request Distribution"
-    case itemsDistribution = "Requested Items Distribution"
-    case ratioDistribution = "Items Per Request Distribution"
-    case honoredRequestDistribution = "Honored Request Distribution"
-    case honoredPercentageDistribution = "Honored Request Percentage Distribution"
-    
-    case requestSeries = "Requests Over Time"
-    case itemSeries = "Requested Items Over Time"
-    case ratioSeries = "Items Per Request Over Time"
-    case honoredRequestSeries = "Honored Requests Over Time"
-    case honoredPercentageSeries = "Honored Request Percentages Over Time"
-}
-
-enum CountrySortFactor: String {
-    case requestCount = "by Requests"
-    case itemCount = "by Items Requested"
-    case itemRatio = "by Items Per Request"
-    case honoredRequestCount = "by Honored Requests"
-    case honoredRequestPercentage = "by Honored Request Percentage"
+enum ReportDataType: String {
+    case requestCount = "Requests"
+    case itemCount = "Items Requested"
+    case itemRatio = "Items Per Request"
+    case honoredRequestCount = "Honored Requests"
+    case honoredRequestPercentage = "Honored Request Percentages"
 }
 
 extension Bundle {
     /// Extract the entire contents of each CSV as one String and return each mapped to the filename in a Dictionary.
     func extractContentsFromCSVs() -> CsvUrlContentsMap {
-        return CSVFile.allCases.reduce(into: [CSVFile: String](), { (result, path) in
-            let components = path.rawValue.split(separator: ".")
+        return CSVFile.allCases.reduce(into: [CSVFile: String](), { (result, csvFile) in
+            let components = csvFile.fileName.split(separator: ".")
             let csvURL = url(forResource: String(components.first!), withExtension: String(components.last!))!
             let contents = try! String(contentsOf: csvURL)
-            result[path] = contents
+            result[csvFile] = contents
         })
     }
 }
@@ -159,11 +151,11 @@ func topSortedCSV(topSortedKeys: [String], dataSet: DataSet) -> CSVOutput {
 }
 
 /// Write the chart data to a CSV file.
-func write(chartData: CSVOutput, directory: URL, csvFile: CSVOutputFile, headerString: String, sortedBy sortFactor: CountrySortFactor? = nil) {
-    var csvURL = directory.appendingPathComponent(csvFile.rawValue)
-    if let sortFactor = sortFactor {
+func write(chartData: CSVOutput, directory: URL, name: String, headerString: String, sortedBy ReportDataType: ReportDataType? = nil) {
+    var csvURL = directory.appendingPathComponent(name.lowercased().replacingOccurrences(of: " ", with: "-"))
+    if let ReportDataType = ReportDataType {
         try! fileManager.createDirectory(at: csvURL, withIntermediateDirectories: true, attributes: nil)
-        csvURL.appendPathComponent(sortFactor.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))
+        csvURL.appendPathComponent("by-" + ReportDataType.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))
     }
     csvURL.appendPathExtension("csv")
     let csvString = headerString + "\n" + chartData.map({ (keyValuePair) -> String in
@@ -174,7 +166,7 @@ func write(chartData: CSVOutput, directory: URL, csvFile: CSVOutputFile, headerS
 
 /// Write a map of time series data into a new directory of files for each time series, where the key to which it's mapped is the filename.
 /// - Parameter countries: a sorted list of country names to include in the time series.
-func write(timeSeries: DataSetMap, csv: CSVFile, directory: URL, csvFile: CSVOutputFile, countries: [String], sortedBy sortFactor: CountrySortFactor) {
+func write(timeSeries: DataSetMap, csv: CSVFile, directory: URL, name: String, countries: [String], sortedBy ReportDataType: ReportDataType) {
     // build a csv that maps time period to a list of values, one for each country sorted by name, default to 0 to fill in empty data for countries that aren't found in a particular csv or time period
     let chartData = timeSeries.reduce(into: [(String, String)](), { (result, timePeriodRequests) in
         result.append((timePeriodRequests.key, countries.map({ (country) -> String in
@@ -188,7 +180,7 @@ func write(timeSeries: DataSetMap, csv: CSVFile, directory: URL, csvFile: CSVOut
         return a.0.compare(b.0) == .orderedAscending
     }
     let headers = "Time Period,\(countries.joined(separator: ","))"
-    write(chartData: chartData, directory: directory, csvFile: csvFile, headerString: headers, sortedBy: sortFactor)
+    write(chartData: chartData, directory: directory, name: name, headerString: headers, sortedBy: ReportDataType)
 }
 
 /// For a `Dictionary` with values of `Dictionary` type, given a key to access a `Dictionary` and a key and value to insert into the inner `Dictionary`, perform the check to see if the inner dictionary exists yet; if so, sets the value to the key inside it, otherwise creates a new `Dictionary` instance with the key and value.
