@@ -47,6 +47,19 @@ class AppleTransparencyReport: XCTestCase {
                 honoredPercentagesOverTime[timePeriod] = data.honoredPercentages
                 data.requests.keys.forEach { countries.insert($0) }
                 
+                let dataSets: [ReportDataType: DataSet] = [
+                    .requestCount: data.requests,
+                    .itemCount: data.items,
+                    .itemRatio: data.ratios,
+                    .honoredRequestCount: data.honoredRequests,
+                    .honoredRequestPercentage: data.honoredPercentages,
+                ]
+                if timePeriod == lastTimePeriod {
+                    dataSets.forEach { (nextDataSet) in
+                        print(String(format: "%@ %@: Mean: %.1f; standard deviation: %.1f.", csv.name, nextDataSet.key.rawValue, nextDataSet.value.values.mean(), nextDataSet.value.values.standardDeviation()))
+                    }
+                }
+                
                 // write reports for each time period
                 let timePeriodDirectory = baseURL
                     .appendingPathComponent("Time Periods")
@@ -76,14 +89,6 @@ class AppleTransparencyReport: XCTestCase {
                             latestTopCountryLists = sortingLists
                         }
                     }
-                    
-                    let dataSets: [ReportDataType: DataSet] = [
-                        .requestCount: data.requests,
-                        .itemCount: data.items,
-                        .itemRatio: data.ratios,
-                        .honoredRequestCount: data.honoredRequests,
-                        .honoredRequestPercentage: data.honoredPercentages,
-                    ]
                     dataSets.forEach { (nextDataSet) in
                         sortingLists.forEach({ (nextTopCountryList) in
                             let csvOutput = topSortedCSV(topSortedKeys: nextTopCountryList.value, dataSet: nextDataSet.value)
