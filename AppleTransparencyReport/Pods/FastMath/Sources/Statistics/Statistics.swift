@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Pippin
 
 /// return number of combinations possible from combining r objects from a domain of d objects
 func combinations(_ d: Int, _ r: Int) -> Int {
@@ -66,6 +67,10 @@ func mean(n: Int, p: Int, q: Int) -> Double {
     return Double(n) * ( Double(p) / Double(p + q) )
 }
 
+/// Map of bucket names to frequencies
+public typealias HistogramCount = [String: Int]
+
+// MARK: extension Collection where Iterator.Element == Float
 public extension Collection where Iterator.Element == Float {
     func mean() -> Float {
         guard count > 0 else { return 0 }
@@ -96,9 +101,29 @@ public extension Collection where Iterator.Element == Float {
     func histogram(buckets: [Range<Float>]) -> HistogramCount {
         guard count > 0 else { return [:] }
         return buckets.reduce(into: HistogramCount(), { (result, bucket) in
-            result[String(describing: bucket)] = filter({ (value) -> Bool in
-                return bucket.contains(value)
+            let value = filter({ (nextValue) -> Bool in
+                return bucket.contains(nextValue)
             }).count
+            
+            // in order to make buckets where the -1 bucket is elements that are at least 1 (but not <= -2) away from 0, and the 1 bucket is elements that are at least 1 (but not >= 2) away from 0, then the 0 bucket contains elements from two ranges: -1..<0 and 0..<1. Then negative ranges (starting with -2..<-1) have their upper bound (-1 from the provided example) used for the bucket, while positive ranges (starting with 1..<2) use the lower bound
+            
+            if bucket.upperBound >= 2 {
+                // 1..<2 and greater
+                result[String(describing: bucket.lowerBound)] = value
+            } else if bucket.upperBound == 1 {
+                // 0..<1
+                result.insert(value: value, forKey: "0.0") { currentValue in
+                    return currentValue + value
+                }
+            } else if bucket.upperBound == 0 {
+                // -1..<0
+                result.insert(value: value, forKey: "0.0") { currentValue in
+                    return currentValue + value
+                }
+            } else {
+                // -2..<-1 and smaller
+                result[String(describing: bucket.upperBound)] = value
+            }
         })
     }
     
@@ -108,13 +133,15 @@ public extension Collection where Iterator.Element == Float {
         let maxZ = ceil(zScores.max()!)
         let minZ = floor(zScores.min()!)
         let maxDistanceFromMean = Swift.max(abs(maxZ), abs(minZ))
-        let buckets = stride(from: -maxDistanceFromMean, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Float> in
+        guard maxDistanceFromMean > 0 else { return ["0.0": count]}
+        let buckets = stride(from: -maxDistanceFromMean - 1, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Float> in
             return Range(uncheckedBounds: (lower: bucket, upper: bucket + 1))
         })
         return zScores.histogram(buckets: buckets)
     }
 }
 
+// MARK: extension Collection where Iterator.Element == Double
 public extension Collection where Iterator.Element == Double {
     func mean() -> Double {
         guard count > 0 else { return 0 }
@@ -145,9 +172,29 @@ public extension Collection where Iterator.Element == Double {
     func histogram(buckets: [Range<Double>]) -> HistogramCount {
         guard count > 0 else { return [:] }
         return buckets.reduce(into: HistogramCount(), { (result, bucket) in
-            result[String(describing: bucket)] = filter({ (value) -> Bool in
-                return bucket.contains(value)
+            let value = filter({ (nextValue) -> Bool in
+                return bucket.contains(nextValue)
             }).count
+            
+            // in order to make buckets where the -1 bucket is elements that are at least 1 (but not <= -2) away from 0, and the 1 bucket is elements that are at least 1 (but not >= 2) away from 0, then the 0 bucket contains elements from two ranges: -1..<0 and 0..<1. Then negative ranges (starting with -2..<-1) have their upper bound (-1 from the provided example) used for the bucket, while positive ranges (starting with 1..<2) use the lower bound
+            
+            if bucket.upperBound >= 2 {
+                // 1..<2 and greater
+                result[String(describing: bucket.lowerBound)] = value
+            } else if bucket.upperBound == 1 {
+                // 0..<1
+                result.insert(value: value, forKey: "0.0") { currentValue in
+                    return currentValue + value
+                }
+            } else if bucket.upperBound == 0 {
+                // -1..<0
+                result.insert(value: value, forKey: "0.0") { currentValue in
+                    return currentValue + value
+                }
+            } else {
+                // -2..<-1 and smaller
+                result[String(describing: bucket.upperBound)] = value
+            }
         })
     }
     
@@ -157,13 +204,15 @@ public extension Collection where Iterator.Element == Double {
         let maxZ = ceil(zScores.max()!)
         let minZ = floor(zScores.min()!)
         let maxDistanceFromMean = Swift.max(abs(maxZ), abs(minZ))
-        let buckets = stride(from: -maxDistanceFromMean, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Double> in
+        guard maxDistanceFromMean > 0 else { return ["0.0": count]}
+        let buckets = stride(from: -maxDistanceFromMean - 1, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Double> in
             return Range(uncheckedBounds: (lower: bucket, upper: bucket + 1))
         })
         return zScores.histogram(buckets: buckets)
     }
 }
 
+// MARK: extension Collection where Iterator.Element == Int
 public extension Collection where Iterator.Element == Int {
     func mean() -> Double {
         guard count > 0 else { return 0 }
@@ -196,9 +245,29 @@ public extension Collection where Iterator.Element == Int {
     func histogram(buckets: [Range<Int>]) -> HistogramCount {
         guard count > 0 else { return [:] }
         return buckets.reduce(into: HistogramCount(), { (result, bucket) in
-            result[String(describing: bucket)] = filter({ (value) -> Bool in
-                return bucket.contains(value)
+            let value = filter({ (nextValue) -> Bool in
+                return bucket.contains(nextValue)
             }).count
+            
+            // in order to make buckets where the -1 bucket is elements that are at least 1 (but not <= -2) away from 0, and the 1 bucket is elements that are at least 1 (but not >= 2) away from 0, then the 0 bucket contains elements from two ranges: -1..<0 and 0..<1. Then negative ranges (starting with -2..<-1) have their upper bound (-1 from the provided example) used for the bucket, while positive ranges (starting with 1..<2) use the lower bound
+            
+            if bucket.upperBound >= 2 {
+                // 1..<2 and greater
+                result[String(describing: bucket.lowerBound)] = value
+            } else if bucket.upperBound == 1 {
+                // 0..<1
+                result.insert(value: value, forKey: "0") { currentValue in
+                    return currentValue + value
+                }
+            } else if bucket.upperBound == 0 {
+                // -1..<0
+                result.insert(value: value, forKey: "0") { currentValue in
+                    return currentValue + value
+                }
+            } else {
+                // -2..<-1 and smaller
+                result[String(describing: bucket.upperBound)] = value
+            }
         })
     }
     
@@ -208,47 +277,8 @@ public extension Collection where Iterator.Element == Int {
         let maxZ = ceil(zScores.max()!)
         let minZ = floor(zScores.min()!)
         let maxDistanceFromMean = Swift.max(abs(maxZ), abs(minZ))
-        let buckets = stride(from: -maxDistanceFromMean, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Double> in
-            return Range(uncheckedBounds: (lower: bucket, upper: bucket + 1))
-        })
-        return zScores.histogram(buckets: buckets)
-    }
-}
-
-/// Map of bucket names to frequencies
-public typealias HistogramCount = [String: Int]
-
-/// Map of bucket names to tuples of frequencies and the set of tags that are included
-public typealias TagValueMap = [String: Double]
-public typealias TaggedCount = (count: Int, tags: Set<String>)
-public typealias TaggedHistogramCount = [Double: TaggedCount]
-
-public extension Dictionary where Key == String, Value == Double {
-    func zScores() -> TagValueMap {
-        let values = self.map({$0.value})
-        let mean = values.mean()
-        let standardDeviation = values.standardDeviation()
-        return reduce(into: [String: Double](), { (result, next) in
-            let (key, value) = next
-            result[key] = (value - mean) / standardDeviation
-        })
-    }
-    
-    func histogram(buckets: [Range<Double>]) -> TaggedHistogramCount {
-        return buckets.reduce(into: TaggedHistogramCount(), { (result, bucket) in
-            let items = filter({ (next) -> Bool in
-                return bucket.contains(next.value)
-            })
-            result[bucket.upperBound] = (items.count, Set(items.keys))
-        })
-    }
-    
-    func normalDistribution() -> TaggedHistogramCount {
-        let zScores = self.zScores()
-        let maxZ = ceil(zScores.values.max()!)
-        let minZ = floor(zScores.values.min()!)
-        let maxDistanceFromMean = Swift.max(abs(maxZ), abs(minZ))
-        let buckets = stride(from: -maxDistanceFromMean, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Double> in
+        guard maxDistanceFromMean > 0 else { return ["0.0": count]}
+        let buckets = stride(from: -maxDistanceFromMean - 1, through: maxDistanceFromMean, by: 1).map({ (bucket) -> Range<Double> in
             return Range(uncheckedBounds: (lower: bucket, upper: bucket + 1))
         })
         return zScores.histogram(buckets: buckets)

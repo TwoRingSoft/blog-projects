@@ -1,5 +1,6 @@
 PODS:
-  - FastMath (2.2.0)
+  - FastMath (2.2.1):
+    - Pippin/Extensions (~> 12.1)
   - Pippin/Extensions (12.1.0)
 
 DEPENDENCIES:
@@ -12,7 +13,7 @@ SPEC REPOS:
     - Pippin
 
 SPEC CHECKSUMS:
-  FastMath: 37e000f36e8c982a942a933ea6c4d02f63f6d55e
+  FastMath: d8d45e475ad9d6000ead0ced4d3bb57ef8a75763
   Pippin: 7a3eb4670d60ac629ead2e133e47930d72cec784
 
 PODFILE CHECKSUM: 8a4302747566fd6a23b454f2f8f35ea5145df76e
