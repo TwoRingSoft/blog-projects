@@ -1,3 +1,5 @@
+[https://tworingsoft.com/blog/2019/01/23/interpreting-apples-transparency-report.html](https://tworingsoft.com/blog/2019/01/23/interpreting-apples-transparency-report.html)
+
 # AppleTransparencyReport
 
 Some software to parse the CSVs provided as part of [Apple's privacy transparency reports](https://www.apple.com/legal/transparency/).
